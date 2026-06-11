@@ -10,15 +10,20 @@
 - 实现前端：间隔分钟、二维码 X/Y 比例、启动/停止、打开无障碍、打开微信、状态和成功数。
 - 实现无障碍服务：打开微信、长按二维码、识别二维码、进入小程序、选择外卖快递、填写两个可编辑字段、提交审核、成功后去重落库。
 - 实现本机持久去重姓名/手机号。
-- 接入授权中心客户端：机器码、30 分钟心跳、租约、响应签名验签、失败静默停止。
 - 服务器已新增授权项目 `visitor_qr_register`，租约 2400 秒，最多 2 台在线，`grace_seconds=0`。
 - 客户端已写入服务端响应公钥 `visitor_qr_register_v1`。
+- 授权客户端已适配新版响应签名：优先校验 `response_signed_payload + response_payload_signature` v2，缺失时回退旧 `response_signature`。
+- 修正 AppConfig PEM 字符串为运行时真实换行，避免公钥解析失败。
+- 配置脚本已避免重复 upsert 已存在项目，降低旧服务端把 `grace_seconds=0` 重置成默认值的风险。
 - 已创建 GitHub 私有仓库并推送：`https://github.com/pythonzjw/visitor_qr_register`。
-- GitHub Actions `v1.0.3` 构建通过，artifact：`visitor-qr-register-debug-apk`。
+- GitHub Actions `v1.0.4` 构建通过，artifact：`visitor-qr-register-debug-apk`。
 
 ## 已修改文件
 
-- `code/visitor_qr_register/` 全部新增并已提交推送。
+- `android_app/app/src/main/java/com/zjw/visitorqrregister/LicenseClient.java`
+- `android_app/app/src/main/java/com/zjw/visitorqrregister/AppConfig.java`
+- `android_app/scripts/configure_license_center.py`
+- `CONTEXT_HANDOFF.md`
 
 ## 关键决策
 
@@ -31,8 +36,10 @@
 
 - `python3 -m py_compile android_app/scripts/configure_license_center.py` 通过。
 - XML 解析和 Java 静态检查通过。
+- 服务端 `/api/verify` 已确认返回 v2 签名字段。
 - 本机缺 Java Runtime，未本地 Gradle 构建。
-- GitHub Actions tag `v1.0.3` 构建成功：`https://github.com/pythonzjw/visitor_qr_register/actions/runs/27353872827`。
+- GitHub Actions tag `v1.0.4` 构建成功：`https://github.com/pythonzjw/visitor_qr_register/actions/runs/27355386061`。
+- APK artifact：`https://api.github.com/repos/pythonzjw/visitor_qr_register/actions/artifacts/7567879309/zip`。
 
 ## 下一步
 
@@ -41,6 +48,6 @@
 
 ## 已知问题
 
-- `v1.0.0`、`v1.0.1` CI 因 PEM 字符串换行失败；`v1.0.3` 已修复。
+- `v1.0.0`、`v1.0.1` CI 因 PEM 字符串换行失败；后续又修复 SDK tools 安装问题，`v1.0.3` 已通过；`v1.0.4` 完成授权 v2 适配。
 - 如果目标小程序手机号字段不可编辑，本轮会失败。
 - 默认二维码位置按视频估算，不同手机/聊天滚动位置需手动调整 X/Y。
