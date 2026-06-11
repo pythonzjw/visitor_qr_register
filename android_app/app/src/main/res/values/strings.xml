@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">访客登记助手</string>
+    <string name="accessibility_service_name">访客登记助手服务</string>
+    <string name="accessibility_service_description">用于按设定间隔辅助完成访客登记页面点击与填写。</string>
+</resources>

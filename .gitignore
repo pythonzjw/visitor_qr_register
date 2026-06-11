@@ -1,0 +1,5 @@
+android_app/.gradle/
+android_app/app/build/
+android_app/build/
+*.iml
+.DS_Store
