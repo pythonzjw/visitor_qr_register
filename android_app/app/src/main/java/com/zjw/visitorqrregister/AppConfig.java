@@ -30,12 +30,9 @@ final class AppConfig {
     private static Map<String, String> buildResponsePublicKeys() {
         Map<String, String> keys = new HashMap<>();
         keys.put("visitor_qr_register_v1",
-                "-----BEGIN PUBLIC KEY-----
-"
-                        + "MCowBQYDK2VwAyEAJsKZ/G/z1HuY1JahRjj+zYaxOmSXXMM49X2RCVLbU74=
-"
-                        + "-----END PUBLIC KEY-----
-");
+                "-----BEGIN PUBLIC KEY-----\\n"
+                        + "MCowBQYDK2VwAyEAJsKZ/G/z1HuY1JahRjj+zYaxOmSXXMM49X2RCVLbU74=\\n"
+                        + "-----END PUBLIC KEY-----\\n");
         return Collections.unmodifiableMap(keys);
     }
 }
