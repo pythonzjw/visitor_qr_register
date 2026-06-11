@@ -2,7 +2,7 @@
 
 ## 当前目标
 
-新建独立安卓 APK：按间隔识别微信访客二维码，随机去重填写姓名手机号并提交，同时接入统一授权中心。
+独立安卓 APK：按间隔识别微信访客二维码，随机去重填写姓名手机号并提交，同时接入统一授权中心，并通过 GitHub CI 构建。
 
 ## 已完成
 
@@ -11,12 +11,14 @@
 - 实现无障碍服务：打开微信、长按二维码、识别二维码、进入小程序、选择外卖快递、填写两个可编辑字段、提交审核、成功后去重落库。
 - 实现本机持久去重姓名/手机号。
 - 接入授权中心客户端：机器码、30 分钟心跳、租约、响应签名验签、失败静默停止。
-- 新增授权配置脚本：创建项目、配置 40 分钟租约、最多 2 台在线、rate_limit、确保响应密钥并写入公钥。
-- README 写明配置、构建和使用方式。
+- 服务器已新增授权项目 `visitor_qr_register`，租约 2400 秒，最多 2 台在线，`grace_seconds=0`。
+- 客户端已写入服务端响应公钥 `visitor_qr_register_v1`。
+- 已创建 GitHub 私有仓库并推送：`https://github.com/pythonzjw/visitor_qr_register`。
+- GitHub Actions `v1.0.2` 构建通过，artifact：`visitor-qr-register-debug-apk`。
 
 ## 已修改文件
 
-- `code/visitor_qr_register/` 全部新增。
+- `code/visitor_qr_register/` 全部新增并已提交推送。
 
 ## 关键决策
 
@@ -27,18 +29,18 @@
 
 ## 验证情况
 
-- 已执行 `python3 -m py_compile android_app/scripts/configure_license_center.py`，通过。
-- 已执行 XML 解析检查，`AndroidManifest.xml` 和 res/xml 均合法。
-- 已执行 Java 源文件包名和括号平衡静态检查，通过。
-- 已尝试 `./gradlew assembleDebug`，本机缺 Java Runtime，无法完成 APK 构建。
+- `python3 -m py_compile android_app/scripts/configure_license_center.py` 通过。
+- XML 解析和 Java 静态检查通过。
+- 本机缺 Java Runtime，未本地 Gradle 构建。
+- GitHub Actions tag `v1.0.2` 构建成功：`https://github.com/pythonzjw/visitor_qr_register/actions/runs/27353582723`。
 
 ## 下一步
 
-- 安装 JDK 17 后重新执行 `cd android_app && ./gradlew assembleDebug`。
-- 运行授权配置脚本写入真实响应公钥。
-- 真机开启无障碍后测试微信长按二维码和小程序字段填写。
+- 下载 Actions artifact 安装真机。
+- 开启无障碍服务，校准二维码 X/Y 并测试微信长按二维码和小程序字段填写。
 
 ## 已知问题
 
+- `v1.0.0`、`v1.0.1` CI 因 PEM 字符串换行失败；`v1.0.2` 已修复。
 - 如果目标小程序手机号字段不可编辑，本轮会失败。
 - 默认二维码位置按视频估算，不同手机/聊天滚动位置需手动调整 X/Y。
