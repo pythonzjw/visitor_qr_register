@@ -75,14 +75,50 @@ final class LicenseClient {
     private boolean verifyResponseSignature(JSONObject res) throws Exception {
         String keyId = res.optString("response_key_id", "");
         String algorithm = res.optString("response_algorithm", "");
-        String signatureB64 = res.optString("response_signature", "");
         String pem = AppConfig.RESPONSE_PUBLIC_KEYS.get(keyId);
-        if (!"Ed25519".equals(algorithm) || keyId.isEmpty() || signatureB64.isEmpty() || pem == null || pem.isEmpty()) return false;
+        if (!"Ed25519".equals(algorithm) || keyId.isEmpty() || pem == null || pem.isEmpty()) return false;
         PublicKey key = parsePublicKey(pem);
+
+        String signedPayload = res.optString("response_signed_payload", "");
+        String payloadSignature = res.optString("response_payload_signature", "");
+        if (!signedPayload.isEmpty() && !payloadSignature.isEmpty()) {
+            byte[] payload = base64UrlDecode(signedPayload);
+            if (!verifyEd25519(key, payload, Base64.getDecoder().decode(payloadSignature))) return false;
+            JSONObject signed = new JSONObject(new String(payload, StandardCharsets.UTF_8));
+            if (!"v2".equals(signed.optString("response_signing_version", ""))) return false;
+            if (!keyId.equals(signed.optString("response_key_id", ""))) return false;
+            if (!algorithm.equals(signed.optString("response_algorithm", ""))) return false;
+            return signedPayloadMatchesResponse(signed, res);
+        }
+
+        String signatureB64 = res.optString("response_signature", "");
+        if (signatureB64.isEmpty()) return false;
+        return verifyEd25519(key, canonicalResponsePayload(res).getBytes(StandardCharsets.UTF_8), Base64.getDecoder().decode(signatureB64));
+    }
+
+    private boolean signedPayloadMatchesResponse(JSONObject signed, JSONObject res) throws Exception {
+        Iterator<String> keys = signed.keys();
+        while (keys.hasNext()) {
+            String key = keys.next();
+            if (!res.has(key)) return false;
+            if (!canonicalJson(signed.get(key)).equals(canonicalJson(res.get(key)))) return false;
+        }
+        return AppConfig.PROJECT_KEY.equals(signed.optString("project_key", ""))
+                && machineId.equals(signed.optString("machine_id", ""));
+    }
+
+    private static boolean verifyEd25519(PublicKey key, byte[] payload, byte[] signature) throws Exception {
         Signature verifier = Signature.getInstance("Ed25519");
         verifier.initVerify(key);
-        verifier.update(canonicalResponsePayload(res).getBytes(StandardCharsets.UTF_8));
-        return verifier.verify(Base64.getDecoder().decode(signatureB64));
+        verifier.update(payload);
+        return verifier.verify(signature);
+    }
+
+    private static byte[] base64UrlDecode(String value) {
+        String padded = value;
+        int mod = padded.length() % 4;
+        if (mod != 0) padded += "====".substring(mod);
+        return Base64.getUrlDecoder().decode(padded);
     }
 
     private static PublicKey parsePublicKey(String pem) throws Exception {

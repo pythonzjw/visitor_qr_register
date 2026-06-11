@@ -62,7 +62,25 @@ def patch_app_config(key_id: str, public_key_pem: str) -> None:
     APP_CONFIG.write_text(patched, encoding="utf-8")
 
 
+def find_existing_project(base_url: str, admin_key: str) -> dict | None:
+    try:
+        data = request_json(base_url, "/api/admin/projects", admin_key)
+    except urllib.error.HTTPError as e:
+        if e.code in (404, 405):
+            return None
+        raise
+    items = data.get("items") or data.get("projects") or []
+    for item in items:
+        if item.get("project_key") == PROJECT_KEY:
+            return item
+    return None
+
+
 def upsert_project(base_url: str, admin_key: str) -> dict:
+    existing = find_existing_project(base_url, admin_key)
+    if existing:
+        return {"ok": True, "project_key": PROJECT_KEY, "existing": True, "project": existing}
+
     payload = {
         "project_key": PROJECT_KEY,
         "enabled": True,
