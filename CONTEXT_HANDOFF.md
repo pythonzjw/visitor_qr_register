@@ -14,7 +14,7 @@
 - 服务器已新增授权项目 `visitor_qr_register`，租约 2400 秒，最多 2 台在线，`grace_seconds=0`。
 - 客户端已写入服务端响应公钥 `visitor_qr_register_v1`。
 - 已创建 GitHub 私有仓库并推送：`https://github.com/pythonzjw/visitor_qr_register`。
-- GitHub Actions `v1.0.2` 构建通过，artifact：`visitor-qr-register-debug-apk`。
+- GitHub Actions `v1.0.3` 构建通过，artifact：`visitor-qr-register-debug-apk`。
 
 ## 已修改文件
 
@@ -32,7 +32,7 @@
 - `python3 -m py_compile android_app/scripts/configure_license_center.py` 通过。
 - XML 解析和 Java 静态检查通过。
 - 本机缺 Java Runtime，未本地 Gradle 构建。
-- GitHub Actions tag `v1.0.2` 构建成功：`https://github.com/pythonzjw/visitor_qr_register/actions/runs/27353582723`。
+- GitHub Actions tag `v1.0.3` 构建成功：`https://github.com/pythonzjw/visitor_qr_register/actions/runs/27353872827`。
 
 ## 下一步
 
@@ -41,6 +41,6 @@
 
 ## 已知问题
 
-- `v1.0.0`、`v1.0.1` CI 因 PEM 字符串换行失败；`v1.0.2` 已修复。
+- `v1.0.0`、`v1.0.1` CI 因 PEM 字符串换行失败；`v1.0.3` 已修复。
 - 如果目标小程序手机号字段不可编辑，本轮会失败。
 - 默认二维码位置按视频估算，不同手机/聊天滚动位置需手动调整 X/Y。
