@@ -36,6 +36,14 @@ public class MainActivity extends Activity {
         store = new RuntimeStore(this);
         LicenseGate.get().start(this);
         buildUi();
+        handleControlIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleControlIntent(intent);
     }
 
     @Override
@@ -92,22 +100,11 @@ public class MainActivity extends Activity {
         root.addView(openWechat, fullWrapWithTop(12));
 
         Button start = button("启动");
-        start.setOnClickListener(v -> {
-            saveSettings();
-            store.setRunning(true);
-            store.runImmediately();
-            store.setStatus("已启动，等待授权和无障碍调度");
-            openWechat();
-            renderRuntime();
-        });
+        start.setOnClickListener(v -> startAutomation());
         root.addView(start, fullWrapWithTop(20));
 
         Button stop = button("停止");
-        stop.setOnClickListener(v -> {
-            store.setRunning(false);
-            store.setStatus("已停止");
-            renderRuntime();
-        });
+        stop.setOnClickListener(v -> stopAutomation());
         root.addView(stop, fullWrapWithTop(12));
 
         TextView hint = label("使用：先打开微信聊天页，让二维码图片保持可见；按视频位置可先用默认 X=0.71/Y=0.79，点启动后会按间隔执行。授权失败时客户端不显示授权信息并停止。");
@@ -115,6 +112,35 @@ public class MainActivity extends Activity {
         root.addView(hint, fullWrapWithTop(20));
 
         setContentView(root);
+    }
+
+    private void handleControlIntent(Intent intent) {
+        if (intent == null) return;
+        if (intent.getBooleanExtra("adb_stop", false)) {
+            stopAutomation();
+        }
+        if (intent.getBooleanExtra("adb_start", false)) {
+            startAutomation();
+        }
+        if (intent.getBooleanExtra("adb_open_wechat", false)) {
+            openWechat();
+            renderRuntime();
+        }
+    }
+
+    private void startAutomation() {
+        saveSettings();
+        store.setRunning(true);
+        store.runImmediately();
+        store.setStatus("已启动，等待授权和无障碍调度");
+        openWechat();
+        renderRuntime();
+    }
+
+    private void stopAutomation() {
+        store.setRunning(false);
+        store.setStatus("已停止");
+        renderRuntime();
     }
 
     private void saveSettings() {
