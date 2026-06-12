@@ -10,12 +10,16 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.math.BigInteger;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.security.spec.EdECPoint;
+import java.security.spec.EdECPublicKeySpec;
+import java.security.spec.NamedParameterSpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
@@ -123,7 +127,32 @@ final class LicenseClient {
 
     private static PublicKey parsePublicKey(String pem) throws Exception {
         String body = pem.replace("-----BEGIN PUBLIC KEY-----", "").replace("-----END PUBLIC KEY-----", "").replaceAll("\\s+", "");
-        return KeyFactory.getInstance("Ed25519").generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(body)));
+        byte[] der = Base64.getDecoder().decode(body);
+        try {
+            return KeyFactory.getInstance("Ed25519").generatePublic(new X509EncodedKeySpec(der));
+        } catch (Exception ignored) {
+            byte[] raw = rawEd25519FromSubjectPublicKeyInfo(der);
+            boolean xOdd = (raw[31] & 0x80) != 0;
+            raw[31] &= 0x7f;
+            byte[] yBigEndian = new byte[raw.length];
+            for (int i = 0; i < raw.length; i++) yBigEndian[i] = raw[raw.length - 1 - i];
+            EdECPoint point = new EdECPoint(xOdd, new BigInteger(1, yBigEndian));
+            return KeyFactory.getInstance("Ed25519")
+                    .generatePublic(new EdECPublicKeySpec(new NamedParameterSpec("Ed25519"), point));
+        }
+    }
+
+    private static byte[] rawEd25519FromSubjectPublicKeyInfo(byte[] der) {
+        byte[] prefix = new byte[] {
+                0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00
+        };
+        if (der.length != prefix.length + 32) throw new IllegalArgumentException("invalid_ed25519_public_key");
+        for (int i = 0; i < prefix.length; i++) {
+            if (der[i] != prefix[i]) throw new IllegalArgumentException("invalid_ed25519_public_key");
+        }
+        byte[] raw = new byte[32];
+        System.arraycopy(der, prefix.length, raw, 0, raw.length);
+        return raw;
     }
 
     private static String canonicalResponsePayload(JSONObject res) throws Exception {
