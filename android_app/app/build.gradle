@@ -14,8 +14,21 @@ android {
         versionName '1.0.0'
     }
 
+    signingConfigs {
+        debugStable {
+            storeFile file('keystore/debug-signing.p12')
+            storePassword 'visitor_debug_pass'
+            keyAlias 'visitor_debug'
+            keyPassword 'visitor_debug_pass'
+            storeType 'pkcs12'
+        }
+    }
+
     buildTypes {
-        debug { debuggable true }
+        debug {
+            debuggable true
+            signingConfig signingConfigs.debugStable
+        }
         release {
             minifyEnabled true
             shrinkResources true
@@ -27,4 +40,8 @@ android {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
     }
+}
+
+dependencies {
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
 }

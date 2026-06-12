@@ -6,21 +6,16 @@ import android.util.Log;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters;
+import org.bouncycastle.crypto.signers.Ed25519Signer;
+
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.math.BigInteger;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyFactory;
-import java.security.PublicKey;
-import java.security.Signature;
-import java.security.spec.EdECPoint;
-import java.security.spec.EdECPublicKeySpec;
-import java.security.spec.NamedParameterSpec;
-import java.security.spec.X509EncodedKeySpec;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -81,13 +76,13 @@ final class LicenseClient {
         String algorithm = res.optString("response_algorithm", "");
         String pem = AppConfig.RESPONSE_PUBLIC_KEYS.get(keyId);
         if (!"Ed25519".equals(algorithm) || keyId.isEmpty() || pem == null || pem.isEmpty()) return false;
-        PublicKey key = parsePublicKey(pem);
+        byte[] publicKey = parsePublicKey(pem);
 
         String signedPayload = res.optString("response_signed_payload", "");
         String payloadSignature = res.optString("response_payload_signature", "");
         if (!signedPayload.isEmpty() && !payloadSignature.isEmpty()) {
             byte[] payload = base64UrlDecode(signedPayload);
-            if (!verifyEd25519(key, payload, Base64.getDecoder().decode(payloadSignature))) return false;
+            if (!verifyEd25519(publicKey, payload, Base64.getDecoder().decode(payloadSignature))) return false;
             JSONObject signed = new JSONObject(new String(payload, StandardCharsets.UTF_8));
             if (!"v2".equals(signed.optString("response_signing_version", ""))) return false;
             if (!keyId.equals(signed.optString("response_key_id", ""))) return false;
@@ -97,7 +92,7 @@ final class LicenseClient {
 
         String signatureB64 = res.optString("response_signature", "");
         if (signatureB64.isEmpty()) return false;
-        return verifyEd25519(key, canonicalResponsePayload(res).getBytes(StandardCharsets.UTF_8), Base64.getDecoder().decode(signatureB64));
+        return verifyEd25519(publicKey, canonicalResponsePayload(res).getBytes(StandardCharsets.UTF_8), Base64.getDecoder().decode(signatureB64));
     }
 
     private boolean signedPayloadMatchesResponse(JSONObject signed, JSONObject res) throws Exception {
@@ -111,11 +106,11 @@ final class LicenseClient {
                 && machineId.equals(signed.optString("machine_id", ""));
     }
 
-    private static boolean verifyEd25519(PublicKey key, byte[] payload, byte[] signature) throws Exception {
-        Signature verifier = Signature.getInstance("Ed25519");
-        verifier.initVerify(key);
-        verifier.update(payload);
-        return verifier.verify(signature);
+    private static boolean verifyEd25519(byte[] publicKey, byte[] payload, byte[] signature) {
+        Ed25519Signer verifier = new Ed25519Signer();
+        verifier.init(false, new Ed25519PublicKeyParameters(publicKey, 0));
+        verifier.update(payload, 0, payload.length);
+        return verifier.verifySignature(signature);
     }
 
     private static byte[] base64UrlDecode(String value) {
@@ -125,21 +120,10 @@ final class LicenseClient {
         return Base64.getUrlDecoder().decode(padded);
     }
 
-    private static PublicKey parsePublicKey(String pem) throws Exception {
+    private static byte[] parsePublicKey(String pem) {
         String body = pem.replace("-----BEGIN PUBLIC KEY-----", "").replace("-----END PUBLIC KEY-----", "").replaceAll("\\s+", "");
         byte[] der = Base64.getDecoder().decode(body);
-        try {
-            return KeyFactory.getInstance("Ed25519").generatePublic(new X509EncodedKeySpec(der));
-        } catch (Exception ignored) {
-            byte[] raw = rawEd25519FromSubjectPublicKeyInfo(der);
-            boolean xOdd = (raw[31] & 0x80) != 0;
-            raw[31] &= 0x7f;
-            byte[] yBigEndian = new byte[raw.length];
-            for (int i = 0; i < raw.length; i++) yBigEndian[i] = raw[raw.length - 1 - i];
-            EdECPoint point = new EdECPoint(xOdd, new BigInteger(1, yBigEndian));
-            return KeyFactory.getInstance("Ed25519")
-                    .generatePublic(new EdECPublicKeySpec(new NamedParameterSpec("Ed25519"), point));
-        }
+        return rawEd25519FromSubjectPublicKeyInfo(der);
     }
 
     private static byte[] rawEd25519FromSubjectPublicKeyInfo(byte[] der) {

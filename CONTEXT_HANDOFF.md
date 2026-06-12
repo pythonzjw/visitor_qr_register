@@ -2,6 +2,7 @@
 完成 `code/visitor_qr_register/` 独立安卓 APK：服务端授权项目、GitHub 私有仓库、CI 构建 APK，并在安卓真机上完成 ADB-only 全流程调试。当前真机已安装旧 APK，发现授权公钥解析兼容问题，需构建修复版复测。
 
 # 已完成
+- 2026-06-12 v1.0.5 真机仍报 `InvalidKeySpecException`；已改为 BouncyCastle Ed25519 验签，并加入固定 debug PKCS12 签名以支持后续覆盖安装。
 - 2026-06-12 真机安装后 App 可启动，界面显示正常；日志发现 `LicenseClient: verify failed: InvalidKeySpecException`，服务端直接 verify 对该 machine_id 返回 `ok=true`。
 - 新增 `code/visitor_qr_register/android_app/` 原生 Java Android 工程。
 - 实现前端：间隔分钟、二维码 X/Y 比例、启动/停止、打开无障碍、打开微信、状态、成功数。
@@ -16,6 +17,8 @@
 - 已将 APK 推到手机：`/sdcard/Download/visitor_qr_register_v104.apk` 与 `/data/local/tmp/visitor_qr_register_v104.apk`。
 
 # 已修改文件
+- `android_app/app/keystore/debug-signing.p12`：固定 debug 签名文件，用于后续覆盖安装。
+- `android_app/app/build.gradle`：debug 构建使用固定 PKCS12 签名并加入 BouncyCastle 依赖。
 - `android_app/app/src/main/java/com/zjw/visitorqrregister/LicenseClient.java`：新增 Ed25519 SPKI 解析 fallback，修复 Android 真机 `InvalidKeySpecException`。
 - `code/visitor_qr_register/` 工程文件
 - `CONTEXT_HANDOFF.md`
@@ -30,6 +33,7 @@
 - 用户允许只修改安装所需权限，但不能影响手机其他已调好的功能；临时改过的小米安装保护键已恢复。
 
 # 验证情况
+- 2026-06-12 v1.0.5 CI 成功：run `27419985978`；因旧 APK 签名不同已卸载旧包，安装 v1.0.5 时再次停在小米 ICP 备案确认页，需要手机本机点击“继续安装”。
 - 2026-06-12 静态检查：`LicenseClient.java` 括号/大括号平衡；本地无 JDK，尚未构建修复版 APK。
 - `python3 -m py_compile code/visitor_qr_register/android_app/scripts/configure_license_center.py` 通过。
 - XML 解析检查通过。
@@ -45,7 +49,7 @@
 - 2026-06-12 15:26 复查：`pm list packages com.zjw.visitorqrregister` 仍为空，手机仍停在小米安装器“未查询到此应用的 ICP 备案信息”弹窗；ADB 点击被拦截，需要手机本机手动点击“继续安装”。
 
 # 下一步
-- 需要用户允许 commit/push 触发 CI 构建修复版 APK；安装修复版后继续验证授权自动注册/心跳/2 台限制，再进入无障碍和微信流程。
+- 需要用户在手机当前 v1.0.5 安装弹窗上手动点一次“继续安装”；安装完成后继续验证授权自动注册/心跳/2 台限制，再进入无障碍和微信流程。
 
 # 已知问题
 - 当前阻塞点是小米安装器的 ICP 备案确认页禁止 ADB 模拟点击，不是 APK 构建失败。
