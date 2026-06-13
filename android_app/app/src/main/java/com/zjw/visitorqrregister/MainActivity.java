@@ -150,6 +150,7 @@ public class MainActivity extends Activity {
 
     private void stopAutomation() {
         store.setRunning(false);
+        store.setCalibrating(false);
         store.setStatus("已停止");
         renderRuntime();
     }
