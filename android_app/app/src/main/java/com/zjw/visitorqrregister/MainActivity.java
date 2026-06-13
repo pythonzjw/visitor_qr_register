@@ -49,6 +49,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        loadSettingsToInputs();
         renderRuntime();
         handler.post(refresh);
     }
@@ -95,8 +96,8 @@ public class MainActivity extends Activity {
         access.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
         root.addView(access, fullWrapWithTop(12));
 
-        Button openWechat = button("打开微信并校准聊天页");
-        openWechat.setOnClickListener(v -> openWechat());
+        Button openWechat = button("打开微信，点击图片自动校准");
+        openWechat.setOnClickListener(v -> startCalibration());
         root.addView(openWechat, fullWrapWithTop(12));
 
         Button start = button("启动");
@@ -107,7 +108,7 @@ public class MainActivity extends Activity {
         stop.setOnClickListener(v -> stopAutomation());
         root.addView(stop, fullWrapWithTop(12));
 
-        TextView hint = label("使用：先打开微信聊天页，让二维码图片保持可见；X/Y 填图片缩略图中心位置。启动后会先点开图片，等待 1 秒，再长按大图并识别二维码。授权失败时客户端不显示授权信息并停止。");
+        TextView hint = label("使用：点“打开微信，点击图片自动校准”后，在微信聊天页点击二维码图片缩略图，App 会自动保存 X/Y。启动后会先点开图片，等待 1 秒，再长按大图并识别二维码。授权失败时客户端不显示授权信息并停止。");
         hint.setTextSize(14f);
         root.addView(hint, fullWrapWithTop(20));
 
@@ -128,8 +129,18 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void startCalibration() {
+        saveSettings();
+        store.setRunning(false);
+        store.setCalibrating(true);
+        store.setStatus("校准中：请在微信聊天页点击二维码图片");
+        openWechat();
+        renderRuntime();
+    }
+
     private void startAutomation() {
         saveSettings();
+        store.setCalibrating(false);
         store.setRunning(true);
         store.runImmediately();
         store.setStatus("已启动，等待授权和无障碍调度");
@@ -151,6 +162,13 @@ public class MainActivity extends Activity {
         store.setQrRatio(x, y);
         store.setStatus(store.isRunning() ? "已更新设置" : "设置已保存");
         renderRuntime();
+    }
+
+    private void loadSettingsToInputs() {
+        if (qrXInput == null || qrYInput == null || intervalInput == null) return;
+        qrXInput.setText(String.format(Locale.US, "%.2f", store.qrXRatio()));
+        qrYInput.setText(String.format(Locale.US, "%.2f", store.qrYRatio()));
+        intervalInput.setText(String.valueOf(store.intervalMinutes()));
     }
 
     private void renderRuntime() {

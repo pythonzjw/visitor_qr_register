@@ -17,6 +17,7 @@ final class RuntimeStore {
     private static final String KEY_SUCCESS_COUNT = "success_count";
     private static final String KEY_USED_NAMES = "used_names";
     private static final String KEY_USED_PHONES = "used_phones";
+    private static final String KEY_CALIBRATING = "calibrating";
     private final SharedPreferences prefs;
 
     RuntimeStore(Context context) {
@@ -32,6 +33,9 @@ final class RuntimeStore {
     float qrXRatio() { return clamp(prefs.getFloat(KEY_QR_X_RATIO, AppConfig.DEFAULT_QR_X_RATIO)); }
     float qrYRatio() { return clamp(prefs.getFloat(KEY_QR_Y_RATIO, AppConfig.DEFAULT_QR_Y_RATIO)); }
     void setQrRatio(float x, float y) { prefs.edit().putFloat(KEY_QR_X_RATIO, clamp(x)).putFloat(KEY_QR_Y_RATIO, clamp(y)).apply(); }
+
+    boolean isCalibrating() { return prefs.getBoolean(KEY_CALIBRATING, false); }
+    void setCalibrating(boolean calibrating) { prefs.edit().putBoolean(KEY_CALIBRATING, calibrating).apply(); }
 
     long nextRunAt() { return prefs.getLong(KEY_NEXT_RUN_AT, 0L); }
     void scheduleNext(long nowMs) { prefs.edit().putLong(KEY_NEXT_RUN_AT, nowMs + intervalMinutes() * 60_000L).apply(); }

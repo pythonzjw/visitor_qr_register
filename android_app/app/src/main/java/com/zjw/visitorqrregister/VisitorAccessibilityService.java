@@ -13,10 +13,12 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -58,7 +60,10 @@ public class VisitorAccessibilityService extends AccessibilityService {
         handler.post(scheduler);
     }
 
-    @Override public void onAccessibilityEvent(AccessibilityEvent event) {}
+    @Override
+    public void onAccessibilityEvent(AccessibilityEvent event) {
+        handleCalibrationClick(event);
+    }
     @Override public void onInterrupt() {}
 
     @Override
@@ -135,6 +140,28 @@ public class VisitorAccessibilityService extends AccessibilityService {
         if (!waitForAny(AppConfig.SUCCESS_TEXTS, deadline)) throw new IllegalStateException("submit_timeout");
         store.markUsed(identity.name, identity.phone);
         store.setStatus("提交成功");
+    }
+
+    private void handleCalibrationClick(AccessibilityEvent event) {
+        if (event == null || store == null || !store.isCalibrating()) return;
+        if (event.getEventType() != AccessibilityEvent.TYPE_VIEW_CLICKED) return;
+        CharSequence pkg = event.getPackageName();
+        if (pkg == null || !"com.tencent.mm".contentEquals(pkg)) return;
+
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        Rect bounds = findCalibrationBounds(event.getSource(), dm);
+        if (bounds == null) {
+            store.setStatus("校准中：请点击二维码图片缩略图");
+            return;
+        }
+
+        float x = bounds.centerX() / (float) Math.max(1, dm.widthPixels);
+        float y = bounds.centerY() / (float) Math.max(1, dm.heightPixels);
+        store.setQrRatio(x, y);
+        store.setCalibrating(false);
+        store.setStatus(String.format(Locale.US, "校准完成：X=%.2f Y=%.2f", store.qrXRatio(), store.qrYRatio()));
+        Toast.makeText(this, "二维码位置校准完成", Toast.LENGTH_SHORT).show();
+        handler.postDelayed(() -> performGlobalAction(GLOBAL_ACTION_BACK), 900L);
     }
 
     private void openWechat() {
@@ -246,6 +273,57 @@ public class VisitorAccessibilityService extends AccessibilityService {
         for (int i = 0; i < node.getChildCount(); i++) collectEditable(node.getChild(i), out);
     }
 
+    private Rect findCalibrationBounds(AccessibilityNodeInfo source, DisplayMetrics dm) {
+        if (source == null || dm == null) return null;
+        List<CalibrationCandidate> candidates = new ArrayList<>();
+        collectCalibrationCandidates(source, candidates, dm, 0);
+        if (candidates.isEmpty()) return null;
+        candidates.sort((a, b) -> Integer.compare(b.score, a.score));
+        return candidates.get(0).bounds;
+    }
+
+    private void collectCalibrationCandidates(AccessibilityNodeInfo node, List<CalibrationCandidate> out, DisplayMetrics dm, int depth) {
+        if (node == null) return;
+        Rect bounds = new Rect();
+        node.getBoundsInScreen(bounds);
+        int score = calibrationScore(node, bounds, dm, depth);
+        if (score > 0) out.add(new CalibrationCandidate(new Rect(bounds), score));
+        for (int i = 0; i < node.getChildCount(); i++) {
+            collectCalibrationCandidates(node.getChild(i), out, dm, depth + 1);
+        }
+    }
+
+    private int calibrationScore(AccessibilityNodeInfo node, Rect bounds, DisplayMetrics dm, int depth) {
+        if (bounds == null || bounds.isEmpty()) return 0;
+        int screenW = Math.max(1, dm.widthPixels);
+        int screenH = Math.max(1, dm.heightPixels);
+        int w = bounds.width();
+        int h = bounds.height();
+        int cx = bounds.centerX();
+        int cy = bounds.centerY();
+        if (cx <= 0 || cy <= 0 || cx >= screenW || cy >= screenH) return 0;
+        if (w < 100 || h < 100) return 0;
+        if (w > screenW * 0.95f || h > screenH * 0.80f) return 0;
+
+        CharSequence clsSeq = node.getClassName();
+        CharSequence textSeq = node.getText();
+        CharSequence descSeq = node.getContentDescription();
+        String cls = clsSeq == null ? "" : clsSeq.toString();
+        String label = ((textSeq == null ? "" : textSeq.toString()) + " " + (descSeq == null ? "" : descSeq.toString())).toLowerCase(Locale.ROOT);
+
+        float ratio = w / (float) Math.max(1, h);
+        boolean squareLike = ratio >= 0.50f && ratio <= 2.00f;
+        boolean imageLike = cls.contains("Image") || label.contains("图片") || label.contains("image");
+        if (!imageLike && !squareLike) return 0;
+
+        int areaScore = Math.min(500, (w * h) / 1000);
+        int squareScore = Math.max(0, 200 - Math.round(Math.abs(w - h) / 2f));
+        int score = areaScore + squareScore + depth * 5;
+        if (imageLike) score += 1000;
+        if (node.isClickable()) score += 80;
+        return score;
+    }
+
     private void clickNodeOrTap(AccessibilityNodeInfo node, int x, int y) {
         AccessibilityNodeInfo cur = node;
         while (cur != null) {
@@ -284,6 +362,15 @@ public class VisitorAccessibilityService extends AccessibilityService {
             this.node = node;
             this.label = label;
             this.bounds = bounds;
+        }
+    }
+
+    private static final class CalibrationCandidate {
+        final Rect bounds;
+        final int score;
+        CalibrationCandidate(Rect bounds, int score) {
+            this.bounds = bounds;
+            this.score = score;
         }
     }
 }
