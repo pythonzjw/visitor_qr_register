@@ -83,7 +83,7 @@ public class MainActivity extends Activity {
 
         qrXInput = decimalInput(String.format(Locale.US, "%.2f", store.qrXRatio()));
         qrYInput = decimalInput(String.format(Locale.US, "%.2f", store.qrYRatio()));
-        root.addView(label("二维码长按位置比例 X/Y（0.05~0.95）"), fullWrap());
+        root.addView(label("聊天页图片点击位置比例 X/Y（0.05~0.95）"), fullWrap());
         root.addView(qrXInput, fullWrap());
         root.addView(qrYInput, fullWrap());
 
@@ -107,7 +107,7 @@ public class MainActivity extends Activity {
         stop.setOnClickListener(v -> stopAutomation());
         root.addView(stop, fullWrapWithTop(12));
 
-        TextView hint = label("使用：先打开微信聊天页，让二维码图片保持可见；按视频位置可先用默认 X=0.71/Y=0.79，点启动后会按间隔执行。授权失败时客户端不显示授权信息并停止。");
+        TextView hint = label("使用：先打开微信聊天页，让二维码图片保持可见；X/Y 填图片缩略图中心位置。启动后会先点开图片，等待 1 秒，再长按大图并识别二维码。授权失败时客户端不显示授权信息并停止。");
         hint.setTextSize(14f);
         root.addView(hint, fullWrapWithTop(20));
 

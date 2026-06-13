@@ -81,8 +81,11 @@ public class VisitorAccessibilityService extends AccessibilityService {
             try {
                 runRound();
             } catch (Throwable t) {
-                Log.d(TAG, "round failed: " + t.getClass().getSimpleName());
-                store.setStatus("本轮失败，等待下次");
+                String reason = t.getMessage() == null || t.getMessage().isEmpty()
+                        ? t.getClass().getSimpleName()
+                        : t.getMessage();
+                Log.d(TAG, "round failed: " + reason);
+                store.setStatus("本轮失败：" + reason);
             } finally {
                 store.scheduleNext(System.currentTimeMillis());
                 executing.set(false);
@@ -99,8 +102,15 @@ public class VisitorAccessibilityService extends AccessibilityService {
         DisplayMetrics dm = getResources().getDisplayMetrics();
         int x = Math.round(dm.widthPixels * store.qrXRatio());
         int y = Math.round(dm.heightPixels * store.qrYRatio());
-        store.setStatus("长按二维码");
-        longPress(x, y);
+
+        store.setStatus("打开二维码图片");
+        tap(x, y);
+        sleep(1000);
+
+        int previewX = Math.round(dm.widthPixels * 0.5f);
+        int previewY = Math.round(dm.heightPixels * 0.45f);
+        store.setStatus("长按大图二维码");
+        longPress(previewX, previewY);
         sleep(1200);
 
         store.setStatus("识别二维码");
