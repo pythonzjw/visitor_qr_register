@@ -6,6 +6,9 @@ on:
     tags: [ 'v*.*.*' ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -33,9 +36,22 @@ jobs:
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug
 
+      - name: Prepare release APK
+        run: |
+          mkdir -p release
+          TAG_NAME="${GITHUB_REF_NAME}"
+          cp app/build/outputs/apk/debug/*.apk "release/visitor-qr-register-${TAG_NAME}.apk"
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: visitor-qr-register-debug-apk
-          path: android_app/app/build/outputs/apk/debug/*.apk
+          path: android_app/release/*.apk
           if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: android_app/release/*.apk
+          generate_release_notes: true

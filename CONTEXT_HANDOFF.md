@@ -1,57 +1,39 @@
 # 当前目标
-完成 `code/visitor_qr_register/` 独立安卓 APK：服务端授权项目、GitHub 私有仓库、CI 构建 APK，并在安卓真机上完成 ADB-only 全流程调试。当前真机已安装旧 APK，发现授权公钥解析兼容问题，需构建修复版复测。
+完成 `code/visitor_qr_register/` 安卓 APK：GitHub tag 触发 CI 自动构建并自动发布 Release APK；后续由用户下载安装到真机测试微信二维码流程。
 
 # 已完成
-- 2026-06-12 v1.0.5 真机仍报 `InvalidKeySpecException`；已改为 BouncyCastle Ed25519 验签，并加入固定 debug PKCS12 签名以支持后续覆盖安装。
-- 2026-06-12 真机安装后 App 可启动，界面显示正常；日志发现 `LicenseClient: verify failed: InvalidKeySpecException`，服务端直接 verify 对该 machine_id 返回 `ok=true`。
-- 新增 `code/visitor_qr_register/android_app/` 原生 Java Android 工程。
-- 实现前端：间隔分钟、二维码 X/Y 比例、启动/停止、打开无障碍、打开微信、状态、成功数。
-- 实现无障碍自动化：打开微信、长按二维码、识别二维码、等待小程序、选择外卖快递、填写两个可编辑字段、提交审核。
-- 提交成功后持久化已用姓名/手机号，确保本机不重复。
-- 服务器授权中心已新增 `visitor_qr_register` 项目：`auto_register + heartbeat_online + project_online_limit + rate_limit`，`lease_seconds=2400`，`grace_seconds=0`，`max_online_devices=2`。
-- 客户端已内置响应公钥 `visitor_qr_register_v1`，并适配授权中心 v2 响应签名。
-- GitHub 私有仓库已创建并推送：`https://github.com/pythonzjw/visitor_qr_register`。
-- GitHub Actions `v1.0.4` 已成功构建 debug APK，artifact API：`https://api.github.com/repos/pythonzjw/visitor_qr_register/actions/artifacts/7567879309/zip`。
-- 真机 ADB 通道已确认：安卓设备 `313d4194` 状态为 `device`。
-- APK 已下载到本地并复制到 Windows：`C:\Users\admin\AppData\Local\Temp\visitor_qr_register_v104.apk`。
-- 已将 APK 推到手机：`/sdcard/Download/visitor_qr_register_v104.apk` 与 `/data/local/tmp/visitor_qr_register_v104.apk`。
+- 原生 Java Android APK 已实现：前端可设置轮询间隔、二维码图片点击位置 X/Y、启动/停止、打开无障碍、打开微信、状态和成功数。
+- 授权中心已接入 `visitor_qr_register`：首次机器码自动注册、30 分钟心跳、最大在线机器数量 2、签名验签与固定 debug 签名。
+- v1.0.7 新增 ADB intent 调试入口：`--ez adb_start true`、`--ez adb_stop true`、`--ez adb_open_wechat true`。
+- GitHub 仓库已公开：`https://github.com/pythonzjw/visitor_qr_register`。
+- v1.0.8 已修正微信图片流程：先点击聊天页图片，等待 1s，再长按大图识别二维码。
+- 当前正在改 CI：tag 构建后自动把 APK 发布到 GitHub Release，避免手动下载 artifact 再上传。
 
 # 已修改文件
-- `android_app/app/keystore/debug-signing.p12`：固定 debug 签名文件，用于后续覆盖安装。
-- `android_app/app/build.gradle`：debug 构建使用固定 PKCS12 签名并加入 BouncyCastle 依赖。
-- `android_app/app/src/main/java/com/zjw/visitorqrregister/LicenseClient.java`：新增 Ed25519 SPKI 解析 fallback，修复 Android 真机 `InvalidKeySpecException`。
-- `code/visitor_qr_register/` 工程文件
-- `CONTEXT_HANDOFF.md`
-- `code/visitor_qr_register/CONTEXT_HANDOFF.md`
+- `.github/workflows/android-debug-apk.yml`：新增 `contents: write` 权限、整理 release APK 文件名、tag 构建时用 `softprops/action-gh-release@v2` 自动发布 Release APK。
+- `android_app/app/src/main/java/com/zjw/visitorqrregister/VisitorAccessibilityService.java`：v1.0.8 已提交，点击图片后长按大图。
+- `android_app/app/src/main/java/com/zjw/visitorqrregister/MainActivity.java`：v1.0.8 已提交，配置文案改为聊天页图片点击位置。
 
 # 关键决策
-- 独立 APK，不改现有 `android_order_grabber`。
-- 服务端生成响应签名密钥对，客户端只内置公钥。
-- 不做客户端请求私钥；使用授权中心 rate_limit 降低刷请求风险。
-- 授权失败不展示任何授权信息，直接停止运行。
-- 真机调试只走 ADB/VisionAgent，不操作 Windows 鼠标、键盘、热键、桌面截图或 GUI。
-- 用户允许只修改安装所需权限，但不能影响手机其他已调好的功能；临时改过的小米安装保护键已恢复。
+- 独立 APK，不改现有其他项目。
+- 真机测试优先，不再使用 MuMu 作为最终测试目标。
+- v1.0.6 后固定签名，优先覆盖安装。
+- Release APK 后续由 GitHub Actions 在 tag 上自动发布。
 
 # 验证情况
-- 2026-06-12 v1.0.5 CI 成功：run `27419985978`；因旧 APK 签名不同已卸载旧包，安装 v1.0.5 时再次停在小米 ICP 备案确认页，需要手机本机点击“继续安装”。
-- 2026-06-12 静态检查：`LicenseClient.java` 括号/大括号平衡；本地无 JDK，尚未构建修复版 APK。
-- `python3 -m py_compile code/visitor_qr_register/android_app/scripts/configure_license_center.py` 通过。
-- XML 解析检查通过。
-- Java 包名和括号平衡静态检查通过。
-- 服务端 `/api/verify` 已确认返回 v2 签名字段。
-- `v1.0.4` CI 成功：`https://github.com/pythonzjw/visitor_qr_register/actions/runs/27355386061`。
-- 真机安装验证：`adb install -r ...visitor_qr_register_v104.apk` 和 `pm install -r /data/local/tmp/...apk` 均返回 `INSTALL_FAILED_USER_RESTRICTED: Install canceled by user`。
-- Xiaomi/Redmi Android 15：`install_non_market_apps=1`、`verifier_verify_adb_installs=0`、`package_verifier_enable=0`，`com.android.shell REQUEST_INSTALL_PACKAGES=allow`。
-- 小米包安装器 UI 可打开 APK，但停在“未查询到此应用的 ICP 备案信息”弹窗；ADB/input/touchscreen tap 均无法触发“继续安装”。底层 `/dev/input/event6` sendevent 无权限。
-- 临时测试并已恢复：`secure miui_safe_mode` 从 `1` 临时置 `0` 后恢复为 `1`；`skip_unknown_source_dialog`、`secure_mode_app_install_verify`、`user_close_security_mode_flag` 已删除恢复为 `null`。
+- v1.0.7 Release 可下载：`https://github.com/pythonzjw/visitor_qr_register/releases/download/v1.0.7/visitor-qr-register-v1.0.7.apk`。
+- v1.0.8 代码已推送且 CI 成功，但当时工作流未自动发布 Release APK。
+- 当前工作流改动尚待提交、推送新 tag 并验证 CI/Release。
 
 # 未完成事项
-- 2026-06-12 15:26 复查：`pm list packages com.zjw.visitorqrregister` 仍为空，手机仍停在小米安装器“未查询到此应用的 ICP 备案信息”弹窗；ADB 点击被拦截，需要手机本机手动点击“继续安装”。
+- 提交并推送 CI 自动发布改动。
+- 打新 tag 触发 CI，确认 Release 页面出现新版 APK。
+- 真机连接 ADB 后再做完整二维码流程测试。
 
 # 下一步
-- 需要用户在手机当前 v1.0.5 安装弹窗上手动点一次“继续安装”；安装完成后继续验证授权自动注册/心跳/2 台限制，再进入无障碍和微信流程。
+- 提交当前 CI 改动，打 `v1.0.9` tag，推送并监控 GitHub Actions。
+- 成功后给用户新版 Release APK 下载链接。
 
 # 已知问题
-- 当前阻塞点是小米安装器的 ICP 备案确认页禁止 ADB 模拟点击，不是 APK 构建失败。
-- 若小程序手机号字段由微信授权且不可编辑，本轮会失败且不占用随机手机号。
-- 默认二维码位置按视频估算，不同手机或聊天滚动后需调整 X/Y。
+- 本地 `gh auth status` 显示 GitHub token 失效；若 git push 或 gh 查询失败，需要用户重新认证或提供可用凭据。
+- 若手机 ADB 未出现真机序列号，无法继续远程真机测试。
